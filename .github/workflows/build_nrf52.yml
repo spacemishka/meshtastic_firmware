@@ -7,24 +7,105 @@ on:
         required: true
         type: string
 
-permissions: read-all
+env:
+  PLATFORMIO_CACHE_DIR: ~/.platformio
+  BUILD_RETENTION_DAYS: 30
 
 jobs:
-  build-nrf52:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build NRF52
-        id: build
-        uses: ./.github/actions/build-variant
+      - name: Cache PlatformIO dependencies
+        uses: actions/cache@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          board: ${{ inputs.board }}
-          build-script-path: bin/build-nrf52.sh
-          artifact-paths: |
-            release/*.hex
-            release/*.uf2
-            release/*.elf
-            release/*.zip
-          arch: nrf52840
+          path: |
+            ~/.platformio
+            .pio
+            ~/.cache/pip
+          key: ${{ runner.os }}-pio-nrf52-${{ inputs.board }}-${{ hashFiles('**/platformio.ini', '**/nrf52.overlay') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-nrf52-${{ inputs.board }}-
+            ${{ runner.os }}-pio-nrf52-
+            ${{ runner.os }}-pio-
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -U platformio
+          pip install -U adafruit-nrfutil
+
+      - name: Check Nordic SDK version
+        run: platformio platform show nordicnrf52
+
+      - name: Build firmware
+        run: |
+          platformio run -e ${{ inputs.board }}
+          mkdir -p artifacts
+          # Copy main firmware files
+          cp .pio/build/${{ inputs.board }}/*.hex artifacts/ || true
+          cp .pio/build/${{ inputs.board }}/*.elf artifacts/ || true
+          # Copy OTA update package if exists
+          cp .pio/build/${{ inputs.board }}/*-ota.zip artifacts/ || true
+          # Copy BLE OTA files if they exist
+          cp .pio/build/${{ inputs.board }}/bleota*.bin artifacts/ || true
+          # Copy factory erase file if exists
+          cp .pio/build/${{ inputs.board }}/Meshtastic_nRF52_factory_erase*.uf2 artifacts/ || true
+
+      - name: Analyze firmware size
+        run: |
+          echo "Firmware size analysis for ${{ inputs.board }}"
+          platformio run --target size -e ${{ inputs.board }}
+          echo "Memory usage details:"
+          python -c "
+          import os
+          import glob
+          
+          def format_size(size, total=None):
+              if total:
+                  return f'{size:,} bytes ({size/total*100:.1f}%)'
+              return f'{size:,} bytes'
+          
+          # NRF52840 specs
+          FLASH_SIZE = 1024 * 1024  # 1MB
+          RAM_SIZE = 256 * 1024     # 256KB
+          
+          elf_files = glob.glob('.pio/build/${{ inputs.board }}/*.elf')
+          if elf_files:
+              elf_size = os.path.getsize(elf_files[0])
+              print(f'ELF size: {format_size(elf_size)}')
+          
+          hex_files = glob.glob('.pio/build/${{ inputs.board }}/*.hex')
+          for f in hex_files:
+              size = os.path.getsize(f)
+              print(f'{os.path.basename(f)}: {format_size(size)} (Flash usage: {format_size(size/2, FLASH_SIZE)})')
+          "
+
+      - name: Get version info
+        id: version
+        run: echo "long=$(./bin/buildinfo.py long)" >> $GITHUB_OUTPUT
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-nrf52-${{ inputs.board }}-${{ steps.version.outputs.long }}
+          path: artifacts/
+          retention-days: ${{ env.BUILD_RETENTION_DAYS }}
+          if-no-files-found: error
+
+      - name: Upload build report
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-report-nrf52-${{ inputs.board }}-${{ steps.version.outputs.long }}
+          path: |
+            .pio/build/${{ inputs.board }}/*.map
+            .pio/build/${{ inputs.board }}/compile_commands.json
+          retention-days: ${{ env.BUILD_RETENTION_DAYS }}
+          if-no-files-found: warn
