@@ -1,0 +1,151 @@
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Time Window Settings</h2>
+    </div>
+    <div class="card-body">
+        <form id="timeWindowForm">
+            <!-- Enable/Disable -->
+            <div class="form-group">
+                <div class="custom-control custom-switch">
+                    <input type="checkbox" class="custom-control-input" id="timeWindowEnabled">
+                    <label class="custom-control-label" for="timeWindowEnabled">Enable Time Window</label>
+                </div>
+            </div>
+
+            <!-- Time Settings -->
+            <div class="form-row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="startTime">Start Time</label>
+                        <input type="time" class="form-control" id="startTime" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="endTime">End Time</label>
+                        <input type="time" class="form-control" id="endTime" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Operation Mode -->
+            <div class="form-group">
+                <label for="windowMode">Operation Mode</label>
+                <select class="form-control" id="windowMode">
+                    <option value="0">Drop packets outside window</option>
+                    <option value="1">Queue packets for later</option>
+                    <option value="2">Receive only outside window</option>
+                </select>
+            </div>
+
+            <!-- Queue Settings -->
+            <div id="queueSettings" style="display: none;">
+                <div class="form-row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="queueSize">Maximum Queue Size</label>
+                            <input type="number" class="form-control" id="queueSize" 
+                                   min="1" max="100" value="32">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="packetExpiry">Packet Expiry (seconds)</label>
+                            <input type="number" class="form-control" id="packetExpiry" 
+                                   min="60" max="86400" value="3600">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+        </form>
+    </div>
+</div>
+
+<script>
+// Time Window Settings Controller
+const TimeWindowController = {
+    init() {
+        this.form = document.getElementById('timeWindowForm');
+        this.enabled = document.getElementById('timeWindowEnabled');
+        this.startTime = document.getElementById('startTime');
+        this.endTime = document.getElementById('endTime');
+        this.mode = document.getElementById('windowMode');
+        this.queueSettings = document.getElementById('queueSettings');
+        this.queueSize = document.getElementById('queueSize');
+        this.packetExpiry = document.getElementById('packetExpiry');
+
+        this.bindEvents();
+        this.loadSettings();
+    },
+
+    bindEvents() {
+        this.form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.saveSettings();
+        });
+
+        this.mode.addEventListener('change', () => {
+            this.queueSettings.style.display = 
+                this.mode.value === '1' ? 'block' : 'none';
+        });
+    },
+
+    async loadSettings() {
+        try {
+            const config = await window.moduleConfig.getConfig();
+            
+            this.enabled.checked = config.lora.time_window_enabled;
+            
+            const startHour = config.lora.window_start_hour.toString().padStart(2, '0');
+            const startMin = config.lora.window_start_minute.toString().padStart(2, '0');
+            this.startTime.value = `${startHour}:${startMin}`;
+            
+            const endHour = config.lora.window_end_hour.toString().padStart(2, '0');
+            const endMin = config.lora.window_end_minute.toString().padStart(2, '0');
+            this.endTime.value = `${endHour}:${endMin}`;
+            
+            this.mode.value = config.lora.window_mode;
+            this.queueSize.value = config.lora.window_queue_size;
+            this.packetExpiry.value = config.lora.window_packet_expire_secs;
+            
+            this.queueSettings.style.display = 
+                config.lora.window_mode === 1 ? 'block' : 'none';
+        } catch (err) {
+            console.error('Failed to load time window settings:', err);
+        }
+    },
+
+    async saveSettings() {
+        try {
+            const startParts = this.startTime.value.split(':');
+            const endParts = this.endTime.value.split(':');
+            
+            const config = {
+                lora: {
+                    time_window_enabled: this.enabled.checked,
+                    window_start_hour: parseInt(startParts[0]),
+                    window_start_minute: parseInt(startParts[1]),
+                    window_end_hour: parseInt(endParts[0]),
+                    window_end_minute: parseInt(endParts[1]),
+                    window_mode: parseInt(this.mode.value),
+                    window_queue_size: parseInt(this.queueSize.value),
+                    window_packet_expire_secs: parseInt(this.packetExpiry.value)
+                }
+            };
+            
+            await window.moduleConfig.setConfig(config);
+            window.showSuccess('Time window settings saved');
+        } catch (err) {
+            console.error('Failed to save time window settings:', err);
+            window.showError('Failed to save settings: ' + err.message);
+        }
+    }
+};
+
+// Initialize when document is ready
+document.addEventListener('DOMContentLoaded', () => {
+    TimeWindowController.init();
+});
+</script>

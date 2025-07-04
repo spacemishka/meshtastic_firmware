@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package meshtastic;
+
+// Controls how packets are handled outside the allowed time window
+enum TimeWindowMode {
+  // Drop packets when outside the time window
+  DROP_PACKETS = 0;
+  // Queue packets when outside the time window
+  QUEUE_PACKETS = 1;
+  // Only disable transmit outside window, still allow receive
+  RECEIVE_ONLY = 2;
+}
+
+// Time window configuration for LoRa operations
+message TimeWindowConfig {
+  // Enable time-based window for LoRa operations
+  bool enabled = 1;
+  
+  // Window start time (hour 0-23)
+  uint32 start_hour = 2;
+  
+  // Window start time (minute 0-59)
+  uint32 start_minute = 3;
+  
+  // Window end time (hour 0-23)
+  uint32 end_hour = 4;
+  
+  // Window end time (minute 0-59)
+  uint32 end_minute = 5;
+  
+  // How to handle packets outside the time window
+  TimeWindowMode window_mode = 6;
+  
+  // Maximum number of packets to queue (if QUEUE_PACKETS mode)
+  uint32 max_queue_size = 7;
+  
+  // Packet expiry time in seconds (if QUEUE_PACKETS mode)
+  uint32 packet_expiry_secs = 8;
+}

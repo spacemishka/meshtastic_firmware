@@ -1,0 +1,224 @@
+name: Meshtastic Tests
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/test.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/test.yml'
+  workflow_dispatch:
+    inputs:
+      test_categories:
+        description: 'Test categories to run (space-separated)'
+        required: false
+        default: 'all'
+
+env:
+  BUILD_TYPE: Release
+  CMAKE_BUILD_PARALLEL_LEVEL: 2
+  GTEST_COLOR: 1
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        category: [unit, integration, performance]
+        include:
+          - os: ubuntu-latest
+            category: stress
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Linux Dependencies
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          lcov \
+          python3-pip
+
+    - name: Install macOS Dependencies
+      if: runner.os == 'macOS'
+      run: |
+        brew install cmake lcov
+        pip3 install -r test/requirements.txt
+
+    - name: Install Windows Dependencies
+      if: runner.os == 'Windows'
+      run: |
+        choco install cmake
+        pip install -r test/requirements.txt
+
+    - name: Configure CMake
+      run: |
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DENABLE_TESTING=ON
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    - name: Run Tests
+      working-directory: ${{github.workspace}}/build
+      env:
+        TEST_CATEGORY: ${{ matrix.category }}
+      run: |
+        python3 ../test/run_tests.py --config ../test/test_config.json --categories ${{ matrix.category }}
+
+    - name: Generate Coverage Report
+      if: runner.os == 'Linux' && matrix.category == 'unit'
+      run: |
+        lcov --capture --directory . --output-file coverage.info
+        lcov --remove coverage.info '/usr/*' --output-file coverage.info
+        lcov --list coverage.info
+
+    - name: Upload Coverage Report
+      if: runner.os == 'Linux' && matrix.category == 'unit'
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.info
+        fail_ci_if_error: true
+
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results-${{ matrix.os }}-${{ matrix.category }}
+        path: |
+          build/test_output/reports/
+          build/test_output/logs/
+          coverage.info
+
+  analyze:
+    name: Analyze Results
+    needs: test
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Download Test Results
+      uses: actions/download-artifact@v3
+      with:
+        path: test-results
+
+    - name: Generate Summary Report
+      run: |
+        python3 test/run_tests.py --analyze test-results
+
+    - name: Upload Summary Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-summary
+        path: test-results/summary
+
+    - name: Check Test Status
+      run: |
+        if [ -f test-results/summary/failed.txt ]; then
+          echo "Tests failed. See summary report for details."
+          exit 1
+        fi
+
+  cleanup:
+    name: Cleanup Old Results
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [test, analyze]
+
+    steps:
+    - name: Delete Old Artifacts
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const ms = require('ms');
+          const retention = ms('30d');
+          
+          const artifacts = await github.rest.actions.listArtifactsForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+          });
+          
+          for (const artifact of artifacts.data.artifacts) {
+            const created = new Date(artifact.created_at).getTime();
+            const now = new Date().getTime();
+            
+            if (now - created > retention) {
+              console.log(`Deleting artifact ${artifact.name}`);
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+              });
+            }
+          }
+
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [test, analyze]
+    if: always()
+
+    steps:
+    - name: Check Test Status
+      id: status
+      run: |
+        if [ "${{ needs.test.result }}" == "success" ] && [ "${{ needs.analyze.result }}" == "success" ]; then
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "status=failure" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create Issue on Failure
+      if: steps.status.outputs.status == 'failure'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const issue = await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: '❌ Test Failure in ${{ github.workflow }}',
+            body: `Test run failed in workflow [${context.workflow}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).\n\nPlease check the workflow logs for details.`,
+            labels: ['bug', 'test-failure']
+          });
+          console.log(`Created issue #${issue.data.number}`);
+
+    - name: Send Slack Notification
+      if: steps.status.outputs.status == 'failure'
+      uses: 8398a7/action-slack@v3
+      with:
+        status: custom
+        custom_payload: |
+          {
+            "attachments": [{
+              "color": "${{ steps.status.outputs.status == 'success' && 'good' || 'danger' }}",
+              "text": "Test run ${{ steps.status.outputs.status == 'success' && 'succeeded ✅' || 'failed ❌' }}",
+              "fields": [
+                {
+                  "title": "Workflow",
+                  "value": "${{ github.workflow }}",
+                  "short": true
+                },
+                {
+                  "title": "Repository",
+                  "value": "${{ github.repository }}",
+                  "short": true
+                }
+              ]
+            }]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

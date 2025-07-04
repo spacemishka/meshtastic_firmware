@@ -1,0 +1,231 @@
+{
+    "version": "1.0.0",
+    "general": {
+        "outputDirectory": "test_output",
+        "tempDirectory": "test_temp",
+        "enableParallelExecution": true,
+        "maxThreads": 4,
+        "timeoutSeconds": 300,
+        "abortOnFailure": false,
+        "cleanupOnCompletion": true,
+        "generateReports": true
+    },
+    "logging": {
+        "enabled": true,
+        "minLevel": "INFO",
+        "maxFileSize": 10485760,
+        "maxFiles": 5,
+        "logFormat": "[{timestamp}] [{level}] {message}",
+        "consoleOutput": true,
+        "fileOutput": true,
+        "includeLineNumbers": true,
+        "categories": [
+            "test",
+            "performance",
+            "system",
+            "error"
+        ]
+    },
+    "metrics": {
+        "enabled": true,
+        "collectMemoryMetrics": true,
+        "collectTimingMetrics": true,
+        "samplingIntervalMs": 100,
+        "retentionDays": 30,
+        "aggregationLevels": [
+            "test",
+            "suite",
+            "category"
+        ],
+        "thresholds": {
+            "maxMemoryMB": 1024,
+            "maxResponseTimeMs": 1000,
+            "maxCpuPercent": 80
+        }
+    },
+    "analysis": {
+        "enabled": true,
+        "patternDetection": true,
+        "anomalyDetection": true,
+        "correlationAnalysis": true,
+        "minSampleSize": 30,
+        "confidenceLevel": 0.95,
+        "detectionSettings": {
+            "zScoreThreshold": 3.0,
+            "movingAverageWindow": 10,
+            "minOccurrences": 3
+        }
+    },
+    "visualization": {
+        "enabled": true,
+        "format": "html",
+        "charts": [
+            "timeSeries",
+            "histogram",
+            "scatter",
+            "heatmap"
+        ],
+        "theme": "light",
+        "customColors": {
+            "pass": "#4CAF50",
+            "fail": "#F44336",
+            "warning": "#FFC107",
+            "neutral": "#2196F3"
+        }
+    },
+    "categories": {
+        "unit": {
+            "enabled": true,
+            "timeout": 30,
+            "retryCount": 0,
+            "priority": "high"
+        },
+        "integration": {
+            "enabled": true,
+            "timeout": 60,
+            "retryCount": 1,
+            "priority": "medium"
+        },
+        "performance": {
+            "enabled": true,
+            "timeout": 300,
+            "retryCount": 0,
+            "priority": "low",
+            "thresholds": {
+                "maxResponseTimeMs": 500,
+                "maxMemoryMB": 512,
+                "maxThroughput": 1000
+            }
+        },
+        "stress": {
+            "enabled": true,
+            "timeout": 1800,
+            "retryCount": 0,
+            "priority": "low",
+            "settings": {
+                "duration": 3600,
+                "threadCount": 4,
+                "dataSize": "1GB"
+            }
+        }
+    },
+    "timeWindow": {
+        "tests": {
+            "basicOperations": {
+                "enabled": true,
+                "priority": "high",
+                "timeout": 30,
+                "parameters": {
+                    "windowSizeSeconds": 300,
+                    "checkIntervalMs": 100,
+                    "iterations": 1000
+                }
+            },
+            "stateTransitions": {
+                "enabled": true,
+                "priority": "high",
+                "timeout": 60,
+                "parameters": {
+                    "transitionCount": 100,
+                    "delayBetweenMs": 50
+                }
+            },
+            "performance": {
+                "enabled": true,
+                "priority": "medium",
+                "timeout": 300,
+                "parameters": {
+                    "concurrentWindows": 10,
+                    "operationsPerWindow": 1000,
+                    "dataSize": "10MB"
+                }
+            },
+            "stress": {
+                "enabled": true,
+                "priority": "low",
+                "timeout": 1800,
+                "parameters": {
+                    "duration": 3600,
+                    "windowCount": 100,
+                    "updateFrequencyMs": 10
+                }
+            }
+        },
+        "validation": {
+            "rules": [
+                {
+                    "name": "window_size",
+                    "type": "range",
+                    "min": 1,
+                    "max": 86400,
+                    "unit": "seconds"
+                },
+                {
+                    "name": "start_time",
+                    "type": "datetime",
+                    "format": "ISO8601",
+                    "allowFuture": true
+                },
+                {
+                    "name": "end_time",
+                    "type": "datetime",
+                    "format": "ISO8601",
+                    "requireAfterStart": true
+                }
+            ],
+            "assertions": [
+                {
+                    "name": "window_active",
+                    "condition": "currentTime >= startTime && currentTime <= endTime",
+                    "message": "Window must be active within its time range"
+                },
+                {
+                    "name": "window_expired",
+                    "condition": "currentTime > endTime",
+                    "message": "Window must be inactive after end time"
+                }
+            ]
+        }
+    },
+    "reporting": {
+        "formats": [
+            "html",
+            "json",
+            "csv"
+        ],
+        "destinations": [
+            {
+                "type": "file",
+                "path": "reports"
+            },
+            {
+                "type": "email",
+                "enabled": false,
+                "recipients": [],
+                "onFailureOnly": true
+            }
+        ],
+        "sections": [
+            "summary",
+            "details",
+            "metrics",
+            "analysis",
+            "logs"
+        ],
+        "retention": {
+            "successfulTests": 30,
+            "failedTests": 90,
+            "metrics": 180
+        }
+    },
+    "cleanup": {
+        "enabled": true,
+        "patterns": [
+            "*.tmp",
+            "*.log",
+            "temp_*"
+        ],
+        "preserveFailedTests": true,
+        "maxAge": 30
+    }
+}

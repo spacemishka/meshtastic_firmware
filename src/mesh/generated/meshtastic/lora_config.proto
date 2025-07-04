@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package meshtastic;
+
+// Time window mode for controlling packet handling outside allowed hours
+enum TimeWindowMode {
+    // Drop packets when outside the time window
+    DROP_PACKETS = 0;
+    // Queue packets when outside the time window  
+    QUEUE_PACKETS = 1;
+    // Only disable transmit outside window, still allow receive
+    RECEIVE_ONLY = 2;
+}
+
+// LoRa configuration options
+message LoRaConfig {
+    // Use preset modem configuration
+    bool use_preset = 1;
+    
+    // Modem preset configuration
+    ModemPreset modem_preset = 2;
+    
+    // Manual bandwidth setting
+    uint32 bandwidth = 3;
+    
+    // Manual spread factor
+    uint32 spread_factor = 4;
+    
+    // Manual coding rate 
+    uint32 coding_rate = 5;
+    
+    // Frequency offset for calibration
+    float frequency_offset = 6;
+    
+    // Region code
+    RegionCode region = 7;
+    
+    // Maximum hop limit
+    uint32 hop_limit = 8;
+    
+    // Enable/disable transmit
+    bool tx_enabled = 9;
+    
+    // Transmit power in dBm
+    int32 tx_power = 10;
+    
+    // Channel number
+    uint32 channel_num = 11;
+    
+    // Override duty cycle limits
+    bool override_duty_cycle = 12;
+    
+    // Enable RX gain boost
+    bool sx126x_rx_boosted_gain = 13;
+    
+    // Override frequency
+    float override_frequency = 14;
+    
+    // Disable PA fan
+    bool pa_fan_disabled = 15;
+    
+    // Time window settings
+    bool time_window_enabled = 16;
+    uint32 window_start_hour = 17;
+    uint32 window_start_minute = 18; 
+    uint32 window_end_hour = 19;
+    uint32 window_end_minute = 20;
+    TimeWindowMode window_mode = 21;
+    uint32 window_queue_size = 22;
+    uint32 window_packet_expire_secs = 23;
+
+    // Ignore certain nodes
+    repeated uint32 ignore_incoming = 30;
+    
+    // Ignore MQTT packets
+    bool ignore_mqtt = 31;
+    
+    // Allow forwarding to MQTT
+    bool config_ok_to_mqtt = 32;
+}
+
+// Keep existing enums
+enum RegionCode {
+    UNSET = 0;
+    US = 1;
+    EU_433 = 2;
+    EU_868 = 3;
+    CN = 4;
+    JP = 5;
+    ANZ = 6;
+    KR = 7;
+    TW = 8;
+    RU = 9;
+    IN = 10;
+    NZ_865 = 11;
+    TH = 12;
+    LORA_24 = 13;
+    UA_433 = 14;
+    UA_868 = 15;
+    MY_433 = 16;
+    MY_919 = 17;
+    SG_923 = 18;
+    PH_433 = 19;
+    PH_868 = 20;
+    PH_915 = 21;
+    ANZ_433 = 22;
+}
+
+enum ModemPreset {
+    LONG_FAST = 0;
+    LONG_SLOW = 1;
+    VERY_LONG_SLOW = 2;
+    MEDIUM_SLOW = 3;
+    MEDIUM_FAST = 4;
+    SHORT_SLOW = 5;
+    SHORT_FAST = 6;
+    LONG_MODERATE = 7;
+    SHORT_TURBO = 8;
+}

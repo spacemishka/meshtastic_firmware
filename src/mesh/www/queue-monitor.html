@@ -1,0 +1,121 @@
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2 class="card-title mb-0">Queue Monitor</h2>
+        <div class="btn-group">
+            <button id="clearQueue" class="btn btn-warning btn-sm">
+                <i class="fas fa-trash"></i> Clear Queue
+            </button>
+            <button id="resetStats" class="btn btn-secondary btn-sm">
+                <i class="fas fa-redo"></i> Reset Stats
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Real-time Metrics -->
+        <div id="queueMetrics" class="mb-4"></div>
+
+        <!-- Charts Row -->
+        <div class="row">
+            <!-- Queue Size History -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Queue Size History</h5>
+                        <canvas id="queueSizeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Priority Distribution -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Priority Distribution</h5>
+                        <canvas id="priorityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Statistics -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Queue Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Last 5m</th>
+                                <th>Last Hour</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Packets Queued</td>
+                                <td id="queued-5m">-</td>
+                                <td id="queued-1h">-</td>
+                                <td id="queued-total">-</td>
+                            </tr>
+                            <tr>
+                                <td>High Priority</td>
+                                <td id="high-5m">-</td>
+                                <td id="high-1h">-</td>
+                                <td id="high-total">-</td>
+                            </tr>
+                            <tr>
+                                <td>Normal Priority</td>
+                                <td id="normal-5m">-</td>
+                                <td id="normal-1h">-</td>
+                                <td id="normal-total">-</td>
+                            </tr>
+                            <tr>
+                                <td>Dropped Packets</td>
+                                <td id="dropped-5m">-</td>
+                                <td id="dropped-1h">-</td>
+                                <td id="dropped-total">-</td>
+                            </tr>
+                            <tr>
+                                <td>Avg Queue Time</td>
+                                <td id="qtime-5m">-</td>
+                                <td id="qtime-1h">-</td>
+                                <td id="qtime-total">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dependencies -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="js/queue-monitor.js"></script>
+
+<style>
+.card {
+    margin-bottom: 1rem;
+}
+
+.progress {
+    margin-top: 1rem;
+}
+
+.table-sm td, .table-sm th {
+    padding: 0.3rem;
+}
+
+#queueMetrics {
+    background-color: #f8f9fa;
+    border-radius: 0.25rem;
+    padding: 1rem;
+}
+
+canvas {
+    max-height: 300px;
+}
+</style>

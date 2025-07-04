@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package meshtastic;
+
+/**
+ * The PortNum enum defines ports for different protocol types.
+ * Each port represents a specific type of message or service.
+ */
+enum PortNum {
+    // Keep existing port definitions...
+
+    /** Used for time window control messages */
+    TIME_WINDOW_APP = 250;  // Use an available port number
+
+    // Keep rest of existing ports...
+}

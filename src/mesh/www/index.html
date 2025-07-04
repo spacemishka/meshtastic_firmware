@@ -1,0 +1,73 @@
+<!-- Add Time Window entry to the navigation menu -->
+<script>
+    const menuItems = [
+        // ... existing menu items ...
+        {
+            id: 'radio',
+            label: 'Radio',
+            icon: 'fas fa-broadcast-tower',
+            subItems: [
+                // ... existing radio subitems ...
+                {
+                    id: 'time-window',
+                    label: 'Time Window',
+                    icon: 'fas fa-clock',
+                    template: 'time-window.html'
+                }
+            ]
+        },
+        // ... rest of menu items ...
+    ];
+</script>
+
+<!-- Add Time Window status to device overview -->
+<script>
+    function updateDeviceStatus(status) {
+        // ... existing status updates ...
+        
+        // Add time window status
+        if (status.lora && status.lora.time_window_enabled) {
+            const now = new Date();
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            
+            const windowActive = isTimeWindowActive(
+                status.lora.window_start_hour,
+                status.lora.window_start_minute,
+                status.lora.window_end_hour,
+                status.lora.window_end_minute
+            );
+            
+            const modeText = {
+                0: 'Drop packets',
+                1: 'Queue packets',
+                2: 'Receive only'
+            }[status.lora.window_mode];
+            
+            $('#deviceStatus').append(`
+                <div class="status-item">
+                    <i class="fas fa-clock ${windowActive ? 'text-success' : 'text-warning'}"></i>
+                    <span>Time Window: ${windowActive ? 'Active' : 'Inactive'}</span>
+                    <small class="text-muted">
+                        ${status.lora.window_start_hour}:${status.lora.window_start_minute} - 
+                        ${status.lora.window_end_hour}:${status.lora.window_end_minute}
+                        (${modeText})
+                    </small>
+                </div>
+            `);
+        }
+    }
+    
+    function isTimeWindowActive(startH, startM, endH, endM) {
+        const now = new Date();
+        const current = now.getHours() * 60 + now.getMinutes();
+        const start = startH * 60 + startM;
+        const end = endH * 60 + endM;
+        
+        if (start <= end) {
+            return current >= start && current < end;
+        } else {
+            return current >= start || current < end;
+        }
+    }
+</script>

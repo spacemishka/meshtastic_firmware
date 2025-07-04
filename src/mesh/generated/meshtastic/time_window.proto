@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package meshtastic;
+
+// Message types for time window functionality
+enum TimeWindowMessageType {
+    WINDOW_STATUS = 0;      // Status update
+    WINDOW_STATS = 1;       // Statistics report
+    WINDOW_COMMAND = 2;     // Control command
+}
+
+// Current status of the time window
+message TimeWindowStatus {
+    bool is_active = 1;           // Current window state
+    uint32 next_change = 2;       // Unix timestamp of next state change
+    uint32 queued_packets = 3;    // Number of packets in queue (if applicable)
+    uint32 dropped_packets = 4;   // Number of dropped packets
+    uint32 window_mode = 5;       // Current operation mode
+}
+
+// Statistics about time window operation
+message TimeWindowStats {
+    uint32 total_queued = 1;      // Total packets queued
+    uint32 total_dropped = 2;     // Total packets dropped
+    uint32 total_delayed = 3;     // Total packets delayed
+    uint32 avg_queue_time = 4;    // Average time in queue (seconds)
+    uint32 max_queue_time = 5;    // Maximum time in queue (seconds)
+    uint32 queue_overflows = 6;   // Number of queue overflow events
+}
+
+// Command to control time window operation
+message TimeWindowCommand {
+    enum CommandType {
+        GET_STATUS = 0;     // Request current status
+        GET_STATS = 1;      // Request statistics
+        FORCE_OPEN = 2;     // Temporarily force window open
+        FORCE_CLOSE = 3;    // Temporarily force window closed
+        RESET_STATS = 4;    // Reset statistics counters
+        CLEAR_QUEUE = 5;    // Clear packet queue
+    }
+    
+    CommandType command = 1;       // Command to execute
+    uint32 duration = 2;          // Duration in seconds (for temporary commands)
+}
+
+// Main message wrapper
+message TimeWindow {
+    TimeWindowMessageType type = 1;
+    
+    oneof payload {
+        TimeWindowStatus status = 2;
+        TimeWindowStats stats = 3;
+        TimeWindowCommand command = 4;
+    }
+}
